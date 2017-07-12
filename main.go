@@ -38,30 +38,29 @@ func worker(jobs <-chan TDownload, rets chan<- string) {
 		// create a request
 		req, err := http.NewRequest("GET", job.songlink, nil)
 		if err != nil {
-			fmt.Println("下载文件时出错：", job.songlink)
+			rets <- fmt.Sprintln("下载文件时出错：", job.songlink)
 			return
 		}
 		req.Close = true
 		// send JSON to firebase
 		songRes, err := http.DefaultClient.Do(req)
 		if err != nil {
-			fmt.Println("下载文件时出错：", job.songlink)
+			rets <- fmt.Sprintln("下载文件时出错：", job.songlink)
 			return
 		}
 		songFile, err := os.Create(job.filename)
 		if err != nil {
-			fmt.Println("创建文件出错：", job.filename)
+			rets <- fmt.Sprintln("创建文件出错：", job.filename)
 			return
 		}
 		written, err := io.Copy(songFile, songRes.Body)
 		if err != nil {
-			fmt.Println("保存音乐文件时出错：", err)
+			rets <- fmt.Sprintln("保存音乐文件时出错：", err)
 			songRes.Body.Close()
 			os.Remove(job.filename)
 			return
 		}
 		songRes.Body.Close()
-		// fmt.Println(job.songname, "下载完成,文件大小：", fmt.Sprintf("%.2f", (float64(written)/(1024*1024))), "MB")
 
 		rets <- fmt.Sprintf("%s 下载完成,文件大小：%.2fMb", job.songname, (float64(written) / (1024 * 1024)))
 	}
@@ -106,9 +105,6 @@ func main() {
 
 	jobs := make(chan TDownload, 100)
 	rets := make(chan string, 100)
-	for i := 0; i < MAX_CROUTINE; i++ {
-		go worker(jobs, rets)
-	}
 
 	reg := regexp.MustCompile(`<ul class="f-hide">(.*?)</ul>`)
 
@@ -173,11 +169,22 @@ func main() {
 		}
 	}
 	close(jobs)
+	total := len(jobs)
+	fmt.Printf("总共%d个文件可以下载\n", total)
 
-	for str := range rets {
-		fmt.Println(str)
+	for i := 0; i < MAX_CROUTINE; i++ {
+		go worker(jobs, rets)
 	}
-	close(rets)
+	retCount := 0
+	for str := range rets {
+		retCount++
+		fmt.Printf("%d : %s\n", retCount, str)
+		if retCount == total {
+			fmt.Println("finish .....")
+			return
+		}
+	}
+
 }
 
 func DownloadString(remoteUrl string, queryValues url.Values) (body []byte, err error) {
