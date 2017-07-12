@@ -1,3 +1,8 @@
+/**
+author:daojianmahun@gmail.com
+date:2017-07-12
+*/
+
 package main
 
 import (
@@ -15,7 +20,8 @@ import (
 	"time"
 )
 
-const MAX_CROUTINE = 5
+const MAX_CROUTINE = 3
+const playlisturl = "http://music.163.com/#/playlist?id="
 const Neteasymp3url = "http://music.163.com/api/song/enhance/download/url?br=320000&id="
 
 type TDownload struct {
@@ -32,6 +38,7 @@ func worker(jobs <-chan TDownload, rets chan<- string) {
 		// create a request
 		req, err := http.NewRequest("GET", job.songlink, nil)
 		if err != nil {
+			fmt.Println("下载文件时出错：", job.songlink)
 			return
 		}
 		req.Close = true
@@ -63,12 +70,14 @@ func worker(jobs <-chan TDownload, rets chan<- string) {
 func main() {
 
 	if len(os.Args) <= 1 {
-		fmt.Println("请输入网易音乐链接.")
+		fmt.Println("请输入网易音乐歌单id.")
 		return
 	}
-	fmt.Println("fetching msg from ", os.Args[1])
 
-	nurl := strings.Replace(os.Args[1], "#/", "", -1)
+	listurl := fmt.Sprintf("%s%s", playlisturl, os.Args[1])
+	fmt.Println("fetching msg from ", listurl)
+
+	nurl := strings.Replace(listurl, "#/", "", -1)
 
 	response, err := DownloadString(nurl, nil)
 	if err != nil {
@@ -145,12 +154,12 @@ func main() {
 			}
 			resData, ok := dat["data"].(map[string]interface{})
 			if ok == false {
-				fmt.Println("没有找到音乐资源:", resData)
+				fmt.Println("没有找到音乐资源: id: ", songId, " name :", songname)
 				continue
 			}
 			songlink, ok := resData["url"].(string)
 			if ok == false {
-				fmt.Println("没有找到音乐资源:", resData)
+				fmt.Println("没有找到音乐资源: id: ", songId, " name :", songname)
 				continue
 			}
 
@@ -162,13 +171,13 @@ func main() {
 				songlink: songlink,
 			}
 		}
-
 	}
 	close(jobs)
 
 	for str := range rets {
 		fmt.Println(str)
 	}
+	close(rets)
 }
 
 func DownloadString(remoteUrl string, queryValues url.Values) (body []byte, err error) {
