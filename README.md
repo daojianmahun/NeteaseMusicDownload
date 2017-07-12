@@ -14,6 +14,6 @@ http://moonlib.com/606.html
 
     go build //编译
     go install //安装
-    NeteaseCloudMusicFlac.exe http://music.163.com/#/playlist?id=145258012 //解析并下载。音乐会下载到当前程序目录的songs_dir目录下。
+    ./main.exe 145258012 //解析并下载。音乐会下载到当前程序目录的songs_dir目录下。
 
 #### 本程序仅供学习之用。
